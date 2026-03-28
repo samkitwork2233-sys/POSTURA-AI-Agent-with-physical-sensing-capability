@@ -2,12 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Postura AI Agent Dashboard</title>
+<title>Postura AI Agent</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-
 body{
 font-family:Arial;
 background:#0f172a;
@@ -16,36 +15,19 @@ text-align:center;
 padding:20px;
 }
 
-h1{
-margin-bottom:20px;
-}
-
 .card{
 background:#1e293b;
-padding:18px;
-margin:12px auto;
-width:360px;
-border-radius:12px;
-box-shadow:0 0 10px rgba(0,0,0,0.3);
+padding:15px;
+margin:10px auto;
+width:350px;
+border-radius:10px;
 }
 
-.good{
-color:#22c55e;
-font-weight:bold;
-}
-
-.bad{
-color:#ef4444;
-font-weight:bold;
-font-size:22px;
-}
-
-.slider{
-width:80%;
-}
+.good{color:#22c55e;}
+.bad{color:#ef4444;font-weight:bold;}
 
 button{
-padding:10px 18px;
+padding:10px 15px;
 border:none;
 border-radius:8px;
 background:#3b82f6;
@@ -57,52 +39,32 @@ canvas{
 background:white;
 border-radius:10px;
 }
-
 </style>
-
 </head>
 
 <body>
 
-<h1>🧠 Postura AI Agent Dashboard</h1>
+<h1>🧠 Postura AI Agent</h1>
 
 <div class="card">
-<button onclick="connectDevice()">Connect Device</button>
+<button onclick="connect()">Connect Device</button>
 <p>Status: <span id="status">Disconnected</span></p>
 </div>
 
 <div class="card">
-AI Agent Status: <span id="agentStatus">Idle</span><br>
+AI Status: <span id="ai">Idle</span><br>
 Action: <span id="action">None</span>
 </div>
 
 <div class="card">
-Angle: <span id="angle">0</span>°<br>
-Deviation: <span id="deviation">0</span>°<br>
-Status: <span id="posture">Waiting...</span>
+Angle: <span id="angle">0</span><br>
+Deviation: <span id="dev">0</span><br>
+Posture: <span id="posture">Waiting...</span>
 </div>
 
 <div class="card">
-<input type="range" min="5" max="30" value="15"
-class="slider" id="thresholdSlider">
-<p>Threshold: <span id="thresholdValue">15</span>°</p>
-</div>
-
-<div class="card">
-Session Time: <span id="timer">0</span> sec
-</div>
-
-<div class="card">
-Good Time: <span id="goodTime">0</span> sec<br>
-Bad Time: <span id="badTime">0</span> sec
-</div>
-
-<div class="card">
-Posture Score: <span id="score">0</span>/100
-</div>
-
-<div class="card">
-Slouch Count: <span id="alerts">0</span>
+Score: <span id="score">0</span>/100<br>
+Slouch Count: <span id="count">0</span>
 </div>
 
 <div class="card">
@@ -111,26 +73,9 @@ Slouch Count: <span id="alerts">0</span>
 
 <script>
 
-let characteristic
-let threshold = 15
+let char
 
-let goodTime = 0
-let badTime = 0
-let alerts = 0
-
-let isSlouching = false
-let badStartTime = null
-let startTime
-
-const slider=document.getElementById("thresholdSlider")
-
-slider.oninput=function(){
-threshold=this.value
-document.getElementById("thresholdValue").innerText=threshold
-sendThreshold()
-}
-
-async function connectDevice(){
+async function connect(){
 
 const device = await navigator.bluetooth.requestDevice({
 filters:[{name:'POSTURA_V3'}],
@@ -140,129 +85,69 @@ optionalServices:['12345678-1234-1234-1234-1234567890ab']
 document.getElementById("status").innerText="Connecting..."
 
 const server = await device.gatt.connect()
-
 const service = await server.getPrimaryService(
 '12345678-1234-1234-1234-1234567890ab')
 
-characteristic = await service.getCharacteristic(
+char = await service.getCharacteristic(
 'abcd1234-5678-1234-5678-abcdef123456')
 
-await characteristic.startNotifications()
+await char.startNotifications()
 
-characteristic.addEventListener(
-'characteristicvaluechanged',
-handleData)
+char.addEventListener('characteristicvaluechanged', handle)
 
 document.getElementById("status").innerText="Connected"
-
-startTimer()
-
 }
 
-function handleData(event){
+function handle(event){
 
-let value=new TextDecoder().decode(event.target.value)
-let data=value.split(",")
+let value = new TextDecoder().decode(event.target.value)
+let data = value.split(",")
 
-let angle=parseFloat(data[0])
-let deviation=parseFloat(data[1])
+let angle = parseFloat(data[0])
+let dev = parseFloat(data[1])
+let status = data[2]
+let score = data[3]
+let count = data[4]
 
-document.getElementById("angle").innerText=angle.toFixed(2)
-document.getElementById("deviation").innerText=deviation.toFixed(2)
+document.getElementById("angle").innerText = angle
+document.getElementById("dev").innerText = dev
+document.getElementById("score").innerText = score
+document.getElementById("count").innerText = count
 
-document.getElementById("agentStatus").innerText="Monitoring"
-
-if(deviation > threshold){
-
-document.getElementById("agentStatus").innerText="Analyzing Context"
-
-if(!badStartTime){
-badStartTime = Date.now()
-}
-
-let duration = (Date.now() - badStartTime)/1000
-
-if(duration > 3){
-
-document.getElementById("posture").innerHTML="<span class='bad'>BAD POSTURE</span>"
-document.getElementById("action").innerText="Alert Triggered"
-
-badTime++
-
-if(!isSlouching){
-alerts++
-isSlouching = true
-}
-
-}else{
-document.getElementById("posture").innerText="Evaluating..."
-document.getElementById("action").innerText="Waiting"
-}
-
-}else{
-
-badStartTime = null
-document.getElementById("posture").innerHTML="<span class='good'>GOOD POSTURE</span>"
+if(status=="GOOD"){
+document.getElementById("posture").innerHTML="<span class='good'>GOOD</span>"
+document.getElementById("ai").innerText="Monitoring"
 document.getElementById("action").innerText="No Action"
+}else{
+document.getElementById("posture").innerHTML="<span class='bad'>BAD</span>"
+document.getElementById("ai").innerText="Analyzing"
+document.getElementById("action").innerText="Alert Triggered"
+}
 
-goodTime++
-isSlouching = false
+updateGraph(dev)
 
 }
 
-document.getElementById("goodTime").innerText=goodTime
-document.getElementById("badTime").innerText=badTime
-document.getElementById("alerts").innerText=alerts
-
-calculateScore()
-updateGraph(deviation)
-
-}
-
-function calculateScore(){
-let total=goodTime+badTime
-if(total==0)return
-let score=Math.round((goodTime/total)*100)
-document.getElementById("score").innerText=score
-}
-
-function startTimer(){
-startTime=Date.now()
-setInterval(function(){
-let sec=Math.floor((Date.now()-startTime)/1000)
-document.getElementById("timer").innerText=sec
-},1000)
-}
-
-function sendThreshold(){
-if(characteristic){
-let encoder=new TextEncoder()
-characteristic.writeValue(encoder.encode(threshold))
-}
-}
-
-const ctx=document.getElementById('graph')
+const ctx=document.getElementById("graph")
 
 const chart=new Chart(ctx,{
-type:'line',
+type:"line",
 data:{
 labels:[],
 datasets:[{
-label:'Deviation',
+label:"Deviation",
 data:[],
-borderColor:'blue',
+borderColor:"blue",
 fill:false
 }]
 },
 options:{animation:false}
 })
 
-function updateGraph(value){
+function updateGraph(v){
 
-let t=chart.data.labels.length
-
-chart.data.labels.push(t)
-chart.data.datasets[0].data.push(value)
+chart.data.labels.push(chart.data.labels.length)
+chart.data.datasets[0].data.push(v)
 
 if(chart.data.labels.length>40){
 chart.data.labels.shift()
@@ -270,7 +155,6 @@ chart.data.datasets[0].data.shift()
 }
 
 chart.update()
-
 }
 
 </script>
