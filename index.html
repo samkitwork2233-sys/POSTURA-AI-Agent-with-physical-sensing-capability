@@ -1,163 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Postura AI Agent</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body{
-font-family:Arial;
-background:#0f172a;
-color:white;
-text-align:center;
-padding:20px;
-}
-
-.card{
-background:#1e293b;
-padding:15px;
-margin:10px auto;
-width:350px;
-border-radius:10px;
-}
-
-.good{color:#22c55e;}
-.bad{color:#ef4444;font-weight:bold;}
-
-button{
-padding:10px 15px;
-border:none;
-border-radius:8px;
-background:#3b82f6;
-color:white;
-cursor:pointer;
-}
-
-canvas{
-background:white;
-border-radius:10px;
-}
-</style>
+  <meta charset="UTF-8">
+  <title>POSTURA Autonomous Agent</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<h1>🧠 Postura AI Agent</h1>
+<h1>🧠 POSTURA – Context-Aware Autonomous Agent</h1>
 
-<div class="card">
-<button onclick="connect()">Connect Device</button>
-<p>Status: <span id="status">Disconnected</span></p>
+<button onclick="connect()">🔗 Connect Device</button>
+
+<div class="container">
+
+  <div class="card">
+    <h2>📊 Context Awareness</h2>
+    <p>Angle: <span id="angle">--</span>°</p>
+    <p>Deviation: <span id="deviation">--</span></p>
+  </div>
+
+  <div class="card">
+    <h2>🧠 Decision Engine</h2>
+    <p>Status: <span id="status">--</span></p>
+    <p>Decision: <span id="decision">Monitoring</span></p>
+    <p>Reason: <span id="reason">--</span></p>
+  </div>
+
+  <div class="card">
+    <h2>⚡ Autonomous Action</h2>
+    <p>Vibration: <span id="vibration">OFF</span></p>
+    <p>Score: <span id="score">100</span></p>
+    <p>Slouch Count: <span id="count">0</span></p>
+  </div>
+
+  <div class="card">
+    <h2>📜 Agent Memory</h2>
+    <div id="log" class="log"></div>
+  </div>
+
 </div>
 
-<div class="card">
-AI Status: <span id="ai">Idle</span><br>
-Action: <span id="action">None</span>
-</div>
+<footer>
+  <p>✔ Real-time sensing | ✔ Autonomous decision | ✔ Immediate action</p>
+</footer>
 
-<div class="card">
-Angle: <span id="angle">0</span><br>
-Deviation: <span id="dev">0</span><br>
-Posture: <span id="posture">Waiting...</span>
-</div>
-
-<div class="card">
-Score: <span id="score">0</span>/100<br>
-Slouch Count: <span id="count">0</span>
-</div>
-
-<div class="card">
-<canvas id="graph"></canvas>
-</div>
-
-<script>
-
-let char
-
-async function connect(){
-
-const device = await navigator.bluetooth.requestDevice({
-filters:[{name:'POSTURA_V3'}],
-optionalServices:['12345678-1234-1234-1234-1234567890ab']
-})
-
-document.getElementById("status").innerText="Connecting..."
-
-const server = await device.gatt.connect()
-const service = await server.getPrimaryService(
-'12345678-1234-1234-1234-1234567890ab')
-
-char = await service.getCharacteristic(
-'abcd1234-5678-1234-5678-abcdef123456')
-
-await char.startNotifications()
-
-char.addEventListener('characteristicvaluechanged', handle)
-
-document.getElementById("status").innerText="Connected"
-}
-
-function handle(event){
-
-let value = new TextDecoder().decode(event.target.value)
-let data = value.split(",")
-
-let angle = parseFloat(data[0])
-let dev = parseFloat(data[1])
-let status = data[2]
-let score = data[3]
-let count = data[4]
-
-document.getElementById("angle").innerText = angle
-document.getElementById("dev").innerText = dev
-document.getElementById("score").innerText = score
-document.getElementById("count").innerText = count
-
-if(status=="GOOD"){
-document.getElementById("posture").innerHTML="<span class='good'>GOOD</span>"
-document.getElementById("ai").innerText="Monitoring"
-document.getElementById("action").innerText="No Action"
-}else{
-document.getElementById("posture").innerHTML="<span class='bad'>BAD</span>"
-document.getElementById("ai").innerText="Analyzing"
-document.getElementById("action").innerText="Alert Triggered"
-}
-
-updateGraph(dev)
-
-}
-
-const ctx=document.getElementById("graph")
-
-const chart=new Chart(ctx,{
-type:"line",
-data:{
-labels:[],
-datasets:[{
-label:"Deviation",
-data:[],
-borderColor:"blue",
-fill:false
-}]
-},
-options:{animation:false}
-})
-
-function updateGraph(v){
-
-chart.data.labels.push(chart.data.labels.length)
-chart.data.datasets[0].data.push(v)
-
-if(chart.data.labels.length>40){
-chart.data.labels.shift()
-chart.data.datasets[0].data.shift()
-}
-
-chart.update()
-}
-
-</script>
+<script src="script.js"></script>
 
 </body>
 </html>
